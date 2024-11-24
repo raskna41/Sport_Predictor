@@ -85,13 +85,18 @@ def clean_team_name(name):
     
     return name.strip()
 
-def prepare_match_data(api):
+def prepare_match_data(api, progress_callback=None):
     """Prepare historical match data with enhanced features"""
     current_year = datetime.now().year
     matches = []
     
+    # Calculate total seasons for progress
+    total_seasons = current_year - (current_year - 7)
+    
     # Fetch last 8 seasons
-    for season in range(current_year - 7, current_year + 1):
+    for i, season in enumerate(range(current_year - 7, current_year + 1)):
+        if progress_callback:
+            progress_callback((i + 1) / total_seasons)
         print(f"Fetching season {season}")
         season_matches = api.get_pl_matches(season)
         if 'matches' in season_matches:

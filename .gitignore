@@ -38,3 +38,7 @@ env/
 
 # Jupyter Notebook
 .ipynb_checkpoints 
+
+# Models
+models/
+*.joblib 

@@ -6,6 +6,9 @@ from xgboost import XGBClassifier
 from sklearn.neural_network import MLPClassifier
 import numpy as np
 import pandas as pd
+import joblib
+from datetime import datetime
+import os
 
 def clean_team_name(name):
     """Clean and standardize team names"""
@@ -92,6 +95,56 @@ class MatchPredictor:
         self.model_weights = [0.3, 0.25, 0.25, 0.2]  # Adjusted weights for ensemble
         self.trained_models = []
         
+        # Add model file paths
+        self.model_dir = "models"
+        self.model_path = os.path.join(self.model_dir, "football_predictor.joblib")
+        self.metadata_path = os.path.join(self.model_dir, "model_metadata.joblib")
+        
+        # Create models directory if it doesn't exist
+        os.makedirs(self.model_dir, exist_ok=True)
+    
+    def save_model(self):
+        """Save the trained model and its metadata"""
+        model_data = {
+            'models': self.trained_models,
+            'le_teams': self.le_teams,
+            'le_results': self.le_results,
+            'scaler': self.scaler,
+            'feature_list': self.feature_list
+        }
+        metadata = {
+            'last_updated': datetime.now(),
+            'model_weights': self.model_weights
+        }
+        
+        joblib.dump(model_data, self.model_path)
+        joblib.dump(metadata, self.metadata_path)
+    
+    def load_model(self):
+        """Load the trained model if it exists"""
+        if os.path.exists(self.model_path) and os.path.exists(self.metadata_path):
+            model_data = joblib.load(self.model_path)
+            metadata = joblib.load(self.metadata_path)
+            
+            self.trained_models = model_data['models']
+            self.le_teams = model_data['le_teams']
+            self.le_results = model_data['le_results']
+            self.scaler = model_data['scaler']
+            self.feature_list = model_data['feature_list']
+            self.model_weights = metadata['model_weights']
+            
+            return metadata['last_updated']
+        return None
+    
+    def needs_update(self, last_updated):
+        """Check if model needs to be updated"""
+        if last_updated is None:
+            return True
+        
+        now = datetime.now()
+        hours_since_update = (now - last_updated).total_seconds() / 3600
+        return hours_since_update >= 24  # Update if more than 24 hours old
+    
     def prepare_features(self, df):
         """Enhanced feature preparation with advanced metrics"""
         # Define the exact set of features we'll use
@@ -152,7 +205,7 @@ class MatchPredictor:
         
         return X, y
     
-    def train(self, match_data):
+    def train(self, match_data, progress_callback=None):
         X, y = self.prepare_features(match_data)
         
         # Stratified split to maintain class distribution
@@ -166,6 +219,8 @@ class MatchPredictor:
         
         # Train models with progress tracking
         for i, model in enumerate(self.models):
+            if progress_callback:
+                progress_callback((i + 1) / len(self.models))
             print(f"Training model {i+1}/{len(self.models)}...")
             model.fit(X_train, y_train)
             pred = model.predict(X_test)
