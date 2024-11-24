@@ -3,10 +3,11 @@ from data_fetcher import FootballDataAPI, prepare_match_data, clean_team_name
 from predictor import MatchPredictor
 import pandas as pd
 
-API_KEY = "35a91905f46a4128a1f989a07e48e11f"
-
 def main():
     st.title("Premier League Match Predictor")
+    
+    # Get API key from secrets
+    API_KEY = st.secrets["FOOTBALL_API_KEY"]
     
     # Initialize API and load data
     api = FootballDataAPI(API_KEY)
